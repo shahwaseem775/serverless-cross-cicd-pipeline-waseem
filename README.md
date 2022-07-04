@@ -6,5 +6,5 @@ Target account stack:
 Tools account stack:
 1: aws cloudformation deploy --template-file ./cloudformation/template.yaml --stack-name serverless-cross-pipeline-test --capabilities CAPABILITY_IAM --profile <dev>
 
-Note: change stack parameters accordingly like ..repository name, url and . tools/target account id etc
+Note: change stack parameters accordingly like ..repository name, url and tools/target account id etc
 
