@@ -31,7 +31,7 @@ phases:
             # - aws cloudformation deploy --template-file paramter-store.template.yml --stack-name parameterStore-stack --parameter-overrides file://parameter.value.${STAGE}.json --no-fail-on-empty-changeset
             # - python validate_parameters.py
             # #- serverless print -v --conceal --stage ${STAGE} -c ${SLSCONFIG} --region us-east-1   
-            - serverless deploy --stage dev
+            - serverless deploy --stage dev 
 artifacts:
     type: zip
     files:

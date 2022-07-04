@@ -15,7 +15,11 @@ Parameters:
   CrossAccountAssumeRoleName:
     Type: String
     Description: Cross Account Role to be assumed by code pipeline to carry out deployment
-    Default: cross-account-role-serverless-deployment
+    Default: cross-account-role-serverless-deployment.
+  CFExecutionRoleName:
+    Type: String
+    Description: Cross Account Role to be assumed by Cloudformation Service to create serverless resources
+    Default: cf-execution-role-serverless-node
   PipelineBucketName:
     Description: >-
       Name of the S3 bucket for your copy of the assets.
@@ -155,6 +159,7 @@ Resources:
               Name: CROSS_ACCOUNT_ROLE
               Type: PLAINTEXT
               Value: !Sub 'arn:aws:iam::${TargetAccountID}:role/${CrossAccountAssumeRoleName}'
+      
       Name: serverless-Nodejs-Qa-build-project
       # ResourceAccessRole: String
       ServiceRole: !GetAtt CodeBuildRoleCF.Arn

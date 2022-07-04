@@ -42,12 +42,38 @@ Resources:
             Effect: Allow
             Action:
               - iam:PassRole
+              - iam:Get*
+              - iam:List*
+              - iam:*Role*
+              - iam:CreatePolicy
+              - iam:DeletePolicy
+              - iam:*PolicyVersion*
+              - iam:*InstanceProfile*
             Resource: '*'
-          - Sid: FullAccess
-            # To Allow admin access
+          - Sid: S3FullAccess
+            # To Get and Put deployment artifacts in serverless deployment bucket
             Effect: Allow
-            Action: '*'
-            Resource: '*'      
+            Action:
+              - s3:*
+            Resource: '*'
+          - Sid: CloudFormationFullAccess
+            # To create serverless deployment cloudformation stack
+            Effect: Allow
+            Action:
+              - cloudformation:*
+            Resource: '*'
+          - Sid: lambdaFullAccess
+            # To create serverless deployment cloudformation stack
+            Effect: Allow
+            Action:
+              - lambda:*
+            Resource: '*'
+          - Sid: ApiGatewayFullAccess
+            # API Gateway
+            Effect: Allow
+            Action:
+              - apigateway:*
+            Resource: '*'
 
 Outputs:
   OutCrossAccountDeploymentRole:
