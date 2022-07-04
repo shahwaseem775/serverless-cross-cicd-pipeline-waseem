@@ -1,0 +1,36 @@
+version: 0.2
+phases:
+    install:
+        runtime-versions:
+            nodejs: 14
+            dotnet: 3.1
+        commands:
+            - echo Installing NPM Dependencies...
+            #- apt-get update
+            - npm install -g serverless@3.1.1
+            - node --version
+            - serverless --version
+            - echo "Install Prequisites"
+            - echo $CROSS_ACCOUNT_ROLE
+            - cd $CODEBUILD_SRC_DIR
+            - chmod +x aws-profile-setup.sh
+            # - dotnet tool install -g Amazon.Lambda.Tools
+            # - npm install serverless-apigw-binary
+            # - npm install serverless-plugin-resource-tagging
+            # - npm install --save-dev serverless-prune-plugin
+    build:
+        commands:
+            - echo Build started on `date`
+            - cd $CODEBUILD_SRC_DIR
+            - . ./aws-profile-setup.sh
+            # #- serverless print -v --conceal --stage ${STAGE} -c ${SLSCONFIG} --region us-east-1   
+            - serverless deploy --stage qa
+artifacts:
+    type: zip
+    files:
+        - '**/*'
+    
+    base-directory: '${CODEBUILD_SRC_DIR}/'
+    Name : 'code'
+
+

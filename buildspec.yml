@@ -1,0 +1,41 @@
+version: 0.2
+phases:
+    install:
+        runtime-versions:
+            nodejs: 14
+            dotnet: 3.1
+        commands:
+            - echo Installing NPM Dependencies...
+            #- apt-get update
+            - npm install -g serverless@3.1.1
+            - node --version
+            - serverless --version
+            # - dotnet tool install -g Amazon.Lambda.Tools
+            # - npm install serverless-apigw-binary
+            # - npm install serverless-plugin-resource-tagging
+            # - npm install --save-dev serverless-prune-plugin
+    build:
+        commands:
+            - echo Build started on `date`
+            - pwd
+            # - cd src/ServerlessApp.Lambda
+            # - ls
+            # - dotnet restore
+            # - dotnet lambda package --configuration release --framework netcoreapp3.1 --msbuild-parameters "/p:PublishReadyToRun=true --self-contained false" --output-package bin/release/netcoreapp3.1/deploy-package.zip            
+            # - cp serverless/*.yml bin/release/netcoreapp3.1/ 
+            # - cp serverless/*.py bin/release/netcoreapp3.1/ 
+            # - cd bin/release/netcoreapp3.1
+            # - ls
+            # - echo $SLSCONFIG
+            # - echo ${SLSCONFIG}
+            # - aws cloudformation deploy --template-file paramter-store.template.yml --stack-name parameterStore-stack --parameter-overrides file://parameter.value.${STAGE}.json --no-fail-on-empty-changeset
+            # - python validate_parameters.py
+            # #- serverless print -v --conceal --stage ${STAGE} -c ${SLSCONFIG} --region us-east-1   
+            - serverless deploy --stage dev
+artifacts:
+    type: zip
+    files:
+        - '**/*'
+    base-directory: '${CODEBUILD_SRC_DIR}/'
+
+

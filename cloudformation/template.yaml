@@ -1,0 +1,244 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: A starter AWS Lambda function.
+
+Parameters:
+  # Account Id of the deployment target.
+  TargetAccountID:
+    Description : Account ID of the target account where the deployment will happen.
+    Type: String
+    Default: '349039078388'
+    ConstraintDescription: Must be a valid AWS Account ID without hyphens.
+    AllowedPattern: '\d{12}'
+    MinLength: 12
+    MaxLength: 12
+  CrossAccountAssumeRoleName:
+    Type: String
+    Description: Cross Account Role to be assumed by code pipeline to carry out deployment
+    Default: cross-account-role-serverless-deployment
+  PipelineBucketName:
+    Description: >-
+      Name of the S3 bucket for your copy of the assets.
+    Type: String
+    MinLength: 3
+    MaxLength: 63
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
+    ConstraintDescription: >-
+      The Quick Start bucket name can include numbers, lowercase
+      letters, uppercase letters, and hyphens (-). It cannot start or end with a
+      hyphen (-).
+    Default: pipelinebucket-serverless-cross
+  CodeCommitRepoURL:
+    Description: >-
+      Name of CodeCommit repository that contain serverless Node project files.
+    Type: String
+    MinLength: 3
+    MaxLength: 1000
+    Default: https://git-codecommit.us-east-1.amazonaws.com/v1/repos/serverless-cross-cicd-waseem
+  CodeCommitRepoName:
+    Description: >-
+      Name of CodeCommit repository that contain serverless Node project files.
+    Type: String
+    MinLength: 3
+    MaxLength: 1000
+    Default: serverless-cross-cicd-waseem
+  CodeCommitBranch:
+    Description: >-
+      Name of CodeCommit repository branch.
+    Type: String
+    MinLength: 3
+    MaxLength: 1000
+    Default: master
+
+Resources:
+ CodeBuildRoleCF:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: codebuild-policy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: "*"
+                Resource: "*"
+                
+
+ CodePipeLineRoleCF:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codepipeline.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns: 
+      - arn:aws:iam::aws:policy/AdministratorAccess
+      Policies:
+        - PolicyName: crossAccAssumeRolePipeLinePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: "sts:AssumeRole"
+                Resource: "*"
+      
+ ServerlessNodejsDevBuild:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Artifacts: 
+          ArtifactIdentifier: String
+          Type: S3
+          NamespaceType: NONE
+          OverrideArtifactName: true
+          Location: !Ref bucketforPipeline
+          EncryptionDisabled: false
+          Packaging: ZIP
+          Path: ''
+          Name: code.zip
+      Description: this is the project build that i have created with cloudformation
+      Environment: 
+          ComputeType: BUILD_GENERAL1_SMALL
+          Image: aws/codebuild/standard:5.0
+          Type: LINUX_CONTAINER
+      Name: serverless-Nodejs-dev-build-project
+      # ResourceAccessRole: String
+      ServiceRole: !GetAtt CodeBuildRoleCF.Arn
+      Source: 
+        GitCloneDepth: 1
+        GitSubmodulesConfig:
+          FetchSubmodules: false
+        InsecureSsl: false
+        Location: !Ref CodeCommitRepoURL
+        Type: CODECOMMIT
+        BuildSpec : ./buildspec.yml
+
+ bucketforPipeline:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${PipelineBucketName}-${AWS::AccountId}'    
+
+ ServerlessNodejsQABuild:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Artifacts: 
+          ArtifactIdentifier: String
+          Type: CODEPIPELINE
+          # Type: S3
+          NamespaceType: NONE
+          OverrideArtifactName: false
+          Location: !Ref bucketforPipeline
+          EncryptionDisabled: false
+          Packaging: ZIP
+          Path: ''
+          Name: qacode.zip
+      Description: this project will execute the build spec from the s3 artifacts .
+      Environment: 
+          ComputeType: BUILD_GENERAL1_SMALL
+          Image: aws/codebuild/standard:5.0
+          Type: LINUX_CONTAINER
+          EnvironmentVariables:
+            -
+              Name: CROSS_ACCOUNT_ROLE
+              Type: PLAINTEXT
+              Value: !Sub 'arn:aws:iam::${TargetAccountID}:role/${CrossAccountAssumeRoleName}'
+      Name: serverless-Nodejs-Qa-build-project
+      # ResourceAccessRole: String
+      ServiceRole: !GetAtt CodeBuildRoleCF.Arn
+      Source: 
+          BuildSpec: buildspec-qa.yml
+          Type: CODEPIPELINE
+          # Type: S3
+          # Location : !sub '${bucketforPipeline}/code.zip'
+
+
+ serverlessCrossPipeline:
+  Type: AWS::CodePipeline::Pipeline
+  Properties: 
+    ArtifactStore: 
+      Location: !Ref bucketforPipeline
+      Type: S3
+    Name: serverless-pipelinewaseem
+    RestartExecutionOnUpdate: false
+    RoleArn: !GetAtt CodePipeLineRoleCF.Arn
+    Stages: 
+     - Name: sourceStage
+       Actions: 
+        - ActionTypeId: 
+            Category: Source 
+            Owner: AWS
+            Provider: CodeCommit
+            Version: 1
+          Configuration:
+              RepositoryName: !Ref CodeCommitRepoName
+              BranchName: !Ref CodeCommitBranch
+              PollForSourceChanges: 'true'
+              OutputArtifactFormat: CODE_ZIP
+          InputArtifacts: []
+          Name: SourceAction
+          OutputArtifacts: 
+            - Name : sourceArtifact
+          Region: us-east-1
+          RunOrder: 1
+     - Name: Deploy-To-Dev
+       Actions: 
+        - ActionTypeId: 
+            Category: Build  
+            Owner: AWS
+            Provider: CodeBuild
+            Version: 1
+          Configuration:
+            ProjectName: !Ref ServerlessNodejsDevBuild
+          InputArtifacts:
+            - Name:  'sourceArtifact'
+          Name: buildAction
+          OutputArtifacts: 
+            - Name : 'devbuildOutputArtifact'
+          Region: us-east-1
+          RunOrder: 1
+   
+
+     - Name: Approval-Stage
+       Actions: 
+          - ActionTypeId: 
+              Category: Approval 
+              Owner: AWS
+              Version: 1
+              Provider: Manual
+            Configuration:
+              CustomData: The latest changes include feedback from you.
+            Name: approvalAction
+            Region: us-east-1
+            RunOrder: 1
+
+
+
+     - Name: Deploy-To-Qa
+       Actions: 
+        - ActionTypeId: 
+            Category: Build  
+            Owner: AWS
+            Provider: CodeBuild
+            Version: 1
+          Configuration:
+            ProjectName: !Ref ServerlessNodejsQABuild
+          InputArtifacts:
+            - Name:  'devbuildOutputArtifact'
+          Name: QAbuildAction
+          OutputArtifacts: 
+            - Name : 'QAbuildOutputArtifact'
+          Region: us-east-1
+          RunOrder: 1      
